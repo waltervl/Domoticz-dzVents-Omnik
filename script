@@ -1,0 +1,63 @@
+-- this script only supports local Omnik inverter with line beginning with myDeviceArray[0]
+-- in contents from link http://IP-Inverter/js/status.js
+-- Create a dummy electricity instant and counter device And fill IDX in line 20
+-- Fill IP address of your local Omnik Inverter in line 19
+
+return {
+	on = {
+		timer = {
+			'every 2 minutes',		-- starting from xx:00 triggers every xx minutes (0 > xx < 60)
+		},
+		httpResponses = { "Omnik" },  -- do not change this
+	},
+	logging = {
+		level = domoticz.LOG_INFO,
+		marker = 'Omnik Solar',
+	},
+	execute = function(dz, item)
+        local maxResponseSeconds = 720 
+        local OmnikIP = 'xxx.xxx.x.xxx'   -- Your local Omnik inverter IP Address
+        local OmnikIDX = xxx              -- IDX of dummy electricity instant and counter device
+
+        
+        local function checkWebpageResponse()
+            local deltaSeconds = dz.time.dDate - dz.data.previousRainSample
+            if ( maxResponseSeconds > 0 )  and ( deltaSeconds > maxResponseSeconds ) then
+                dz.notify(scriptVar, 'Omnik Inverter did not respond within ' .. tostring(maxResponseSeconds) .. ' seconds.')
+            end
+        end		 
+        local function getOmnikData()
+           local urlstring = 'http://' .. OmnikIP .. '/js/status.js'
+           dz.openURL  ({ url = urlstring, callback = "Omnik" })
+        end	
+        
+        local function processHTM()
+            OmnikData = (item.data):gsub('"',''):gsub("'","")
+            OmnikArray = string.match(OmnikData, 'myDeviceArray%[0%].+,;')
+            -- dz.log('Omnik Array: ' .. OmnikArray,dz.LOG_INFO)
+            splittedResult = dz.utils.stringSplit(OmnikArray,',')
+            strOmnikCurrentWatt = splittedResult[6]                  -- Amount in Watt
+            strOmnikkWhToday = splittedResult[7]                                -- Amount in kWh of the day, not used
+            strOmnikTotalkWh = splittedResult[8]                               -- Total generated kWh needs to be converted to Wh
+            OmnikCurrentWatt = tonumber(strOmnikCurrentWatt)
+            OmnikTotalWh = tonumber(strOmnikTotalkWh)*100
+            dz.log("Received Data: Current Power: " .. strOmnikCurrentWatt ..' W',dz.LOG_INFO)
+            -- dz.log("Received Data: Daily Power: " .. strOmnikkWhToday .. ' kWh',dz.LOG_INFO)
+            dz.log("Received Data: Total Power: " .. tostring(OmnikTotalWh) .. ' Wh',dz.LOG_INFO)
+            -- update Omnik electricity instant and counter device 
+            dz.devices(OmnikIDX).updateElectricity(OmnikCurrentWatt, OmnikTotalWh)
+           
+        end
+		 
+		 -- Main
+		 if item.isTimer then
+            --checkWebpageResponse()
+            getOmnikData()
+        elseif item.ok then -- statusCode == 2xx
+            processHTM(item.data)
+        else
+            dz.log('Could not get (good) data from ' .. OmnikIP,dz.LOG_ERROR)
+            dz.log(item.data,dz.LOG_DEBUG)
+        end
+	end
+}
