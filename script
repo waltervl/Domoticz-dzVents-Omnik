@@ -1,7 +1,8 @@
--- this script only supports local Omnik inverter with line beginning with myDeviceArray[0]
+-- this script only supports local Omnik inverter with line beginning with myDeviceArray[0] or webData=
 -- in contents from link http://IP-Inverter/js/status.js
--- Create a dummy electricity instant and counter device And fill IDX in line 20
--- Fill IP address of your local Omnik Inverter in line 19
+-- comment/uncomment OmnikArray definition in line 38/39
+-- Fill IP address of your local Omnik Inverter in line 20
+-- Create a dummy electricity instant and counter device And fill IDX in line 21
 
 return {
 	on = {
@@ -33,7 +34,9 @@ return {
         
         local function processHTM()
             OmnikData = (item.data):gsub('"',''):gsub("'","")
+	    -- Select the correct OmnikArray
             OmnikArray = string.match(OmnikData, 'myDeviceArray%[0%].+,;')
+            -- OmnikArray = string.match(OmnikData, 'webData=(.-);')
             -- dz.log('Omnik Array: ' .. OmnikArray,dz.LOG_INFO)
             splittedResult = dz.utils.stringSplit(OmnikArray,',')
             strOmnikCurrentWatt = splittedResult[6]                  -- Amount in Watt
